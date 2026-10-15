@@ -38,7 +38,13 @@ def validate_notebook(path: Path = NOTEBOOK) -> list[str]:
                 errors.append(f"cell {index} has a stale execution count")
 
     joined = "\n".join(code_source)
-    for required in ("CARDIAC_SURGERY_DATA", "ColumnTransformer", "classification_report"):
+    for required in (
+        "CARDIAC_SURGERY_DATA",
+        "prepare_data",
+        "ColumnTransformer",
+        "classification_report",
+        "StratifiedGroupKFold",
+    ):
         if required not in joined:
             errors.append(f"notebook is missing expected workflow component: {required}")
     for removed in ("tensorflow", "keras", "xgboost", "LabelEncoder"):

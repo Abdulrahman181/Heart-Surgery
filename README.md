@@ -23,16 +23,16 @@ export CARDIAC_SURGERY_DATA=/absolute/path/to/cardiac-surgery.csv
 jupyter lab "cardiac-surgery-and-percutaneous (1).ipynb"
 ```
 
-Run cells from top to bottom. The baseline classifier uses a fixed seed (`42`), fits imputation and one-hot encoding inside a scikit-learn `Pipeline` on the training split only, and reports accuracy, balanced accuracy, a classification report, and a confusion matrix. A stratified split is used when every target class has at least two rows.
+Run cells from top to bottom. `data_validation.py` validates required columns, coerces the count/rate fields, parses numeric years without the pandas nanosecond-date trap, and rejects impossible counts/rates. The baseline classifier uses a fixed seed (`42`), fits imputation and one-hot encoding inside a scikit-learn `Pipeline` on the training split only, and reports accuracy, balanced accuracy, a classification report, and a confusion matrix. Region/Procedure groups remain together across the holdout; a stratified grouped split is used when feasible, with a deterministic grouped fallback for rare classes.
 
 ## Static validation
 
-The repository has no Python application modules; the notebook is the executable artifact. Run these checks without the dataset:
+The notebook is the executable artifact, with `data_validation.py` providing the tested data contract. Run these checks without the dataset:
 
 ```bash
 python validate_notebook.py
 python -m unittest discover -s tests -v
-ruff check validate_notebook.py tests
+ruff check .
 ```
 
 These checks parse every code cell with Python AST, verify notebook structure and cleared outputs, and catch obvious regression conditions. They do not replace a full notebook execution with the licensed dataset.
@@ -41,4 +41,6 @@ These checks parse every code cell with Python AST, verify notebook structure an
 
 - The dataset and any generated model artifacts are not included, so full execution and numerical results are intentionally not claimed here.
 - Metrics depend on the data split, class balance, missingness, and installed library versions.
+- The grouped holdout is a single baseline evaluation; it is not temporal validation, cross-validation, or a clinical validation study.
+- The validator intentionally rejects non-numeric count/rate values and impossible ranges; inspect and correct source data rather than silently imputing malformed records.
 - The model is a baseline for analysis and must not be used for patient-level decisions.

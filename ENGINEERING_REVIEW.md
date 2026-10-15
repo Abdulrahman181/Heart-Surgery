@@ -54,3 +54,39 @@ The notebook's code cells were also parsed with Python AST as part of the valida
 ## Execution caveat
 
 A full notebook run was **not claimed**: the repository does not contain `data/cardiac-surgery.csv`, and the environment does not have the project's ML stack installed. Installing dependencies or obtaining the licensed dataset was outside this audit. Consequently, no numerical model result, chart result, or data-quality conclusion is presented as an observed result here. After supplying the CSV, run the notebook from top to bottom and review class balance and schema before interpreting any metrics.
+
+## Second Senior Review
+
+### Scope and findings
+
+A second review covered every tracked file, notebook code cell and metadata, Python/config/test/README/requirements content, Git history, and the working-tree diff. The repository was clean at review start; no secrets, generated model artifacts, or dataset were present.
+
+| Area | Finding | Disposition |
+|---|---|---|
+| Data contract | Required-column presence alone did not protect EDA/modeling from malformed numeric values, impossible counts, out-of-range rates, or an entirely unparseable year column. | Added `data_validation.py` and `prepare_data()`; it validates schema, converts numeric fields, checks count/rate ranges, checks deaths do not exceed cases, and fails with actionable errors. |
+| Year parsing | `pd.to_datetime()` was applied before numeric fallback, so integer years such as `2015` could be interpreted as nanoseconds near 1970. | Added numeric-first `parse_year()` with date fallback and regression coverage for numeric and date-like input. |
+| Optional columns | Passing a tuple to pandas `drop(columns=...)` does not remove multiple labels in the supported pandas behavior; optional identifiers could remain in the frame. | Changed the helper to pass an explicit list and added a regression test. |
+| Split leakage | A random row split can place repeated Region/Procedure panel observations on both sides of the holdout. | Replaced it with deterministic `StratifiedGroupKFold` selection and a grouped fallback for rare classes; accepted splits must contain both target classes in train and test. |
+| Notebook hygiene | The notebook still had an unused NumPy import and static checks did not assert the data-contract/grouped-evaluation components. | Removed the unused import, strengthened `validate_notebook.py`, and re-cleared outputs, execution counts, and cell metadata. |
+
+### Validation performed
+
+The following checks passed after the fixes:
+
+```text
+python3 validate_notebook.py
+python3 -m unittest discover -s tests -v       # 8 tests, OK
+ruff check .                                   # All checks passed
+python3 -m compileall -q data_validation.py validate_notebook.py tests
+Notebook state check: all code-cell outputs empty and execution_count unset
+Synthetic schema-valid grouped split smoke test: both classes in train/test
+```
+
+No end-to-end notebook run or project metric is claimed: the repository intentionally lacks the licensed CSV. The synthetic smoke test validates helper behavior and split mechanics only; it is not project data or a project result.
+
+### Remaining risks
+
+- The dataset is absent, so real-world schema variants, missingness, duplicate records, class balance, and actual model behavior remain unverified.
+- The grouped holdout is a single baseline split, not temporal validation, repeated cross-validation, calibration, or clinical validation.
+- `data_validation.py` assumes mortality rates are expressed as percentages from 0 to 100; a source encoded as proportions from 0 to 1 would need an explicit contract decision rather than silent conversion.
+- No artifact-serving/API/UI layer exists in the tracked repository; none was fabricated during this review.
